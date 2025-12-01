@@ -299,7 +299,7 @@
   <!-- QRious für lokalen QR-Render -->
   <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
 
-  <!-- TECH: Client-ID, Cloudflare-Endpoint, Loader + QR-Setup -->
+  <!-- TECH: Client-ID, Cloudflare-Endpoint, Loader + QR-Setup + SEND-LOGIK -->
   <script>
     // Fester Client-Identifier für diese Seite
     const CLIENT_API_ID = 'test_client_p';
@@ -310,10 +310,9 @@
     (function(){
       console.log('[Endora] Initializing yellow client page…');
 
-      // --- Loader für Endora-Core-Script ---
+      // --- Loader für Endora-Core-Script (kannst du in Zukunft nutzen) ---
       var s = document.createElement('script');
       s.src = '/chat-interface-tech-config/v1/coreloader.js';
-
       s.setAttribute('data-webhook', CHAT_ENDPOINT);
       s.setAttribute('data-client-id', CLIENT_API_ID);
       s.setAttribute('data-brand', 'Endora');
@@ -334,24 +333,21 @@
 
       // --- QR-Code erzeugen (mit Fallback) ---
       try {
-        var img = document.getElementById('apt-qr-img');
+        var img  = document.getElementById('apt-qr-img');
         var link = document.getElementById('apt-qr');
 
         if (link) {
-          link.href = CHAT_ENDPOINT;
+          link.href = window.location.href;  // QR zeigt auf diese Seite (Chat im Browser)
         }
 
         if (!img) {
           console.warn('[Endora] apt-qr-img not found, cannot render QR.');
-          return;
-        }
-
-        if (window.QRious) {
+        } else if (window.QRious) {
           console.log('[Endora] QRious gefunden, generiere lokalen QR-Code…');
           var qrCanvas = document.createElement('canvas');
           new QRious({
             element: qrCanvas,
-            value: CHAT_ENDPOINT,
+            value: window.location.href,
             size: 180
           });
           img.src = qrCanvas.toDataURL('image/png');
@@ -359,7 +355,7 @@
           console.warn('[Endora] QRious nicht verfügbar, nutze Fallback-QR-Service.');
           img.src =
             'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' +
-            encodeURIComponent(CHAT_ENDPOINT);
+            encodeURIComponent(window.location.href);
         }
       } catch (err) {
         console.error('[Endora] QR generation failed, fallback:', err);
@@ -367,8 +363,151 @@
         if (imgFallback) {
           imgFallback.src =
             'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' +
-            encodeURIComponent(CHAT_ENDPOINT);
+            encodeURIComponent(window.location.href);
         }
+      }
+
+      // --- MINIMAL FUNKTIONIERENDE SEND-LOGIK DIREKT IN DIESER SEITE ---
+
+      const inlineMessages = document.getElementById('inline-messages');
+      const inlineInput    = document.getElementById('inline-input');
+      const inlineSend     = document.getElementById('inline-send');
+
+      const popupMessages  = document.getElementById('popup-messages');
+      const popupInput     = document.getElementById('popup-input');
+      const popupSend      = document.getElementById('popup-send');
+
+      const bubbleBtn      = document.getElementById('bubble-btn');
+      const popupOverlay   = document.getElementById('popup-overlay');
+      const popupWrap      = document.getElementById('popup-wrap');
+      const popupClose     = document.getElementById('popup-close');
+      const inlineClose    = document.getElementById('inline-close');
+
+      const sessionId = 'sess-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+
+      function appendMessage(container, role, text) {
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+        div.textContent = text;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+      }
+
+      function showTyping(container) {
+        if (!container) return null;
+        const wrap = document.createElement('div');
+        wrap.className = 'msg bot typing';
+        wrap.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+        container.appendChild(wrap);
+        container.scrollTop = container.scrollHeight;
+        return wrap;
+      }
+
+      async function sendToBackend(message, context) {
+        const payload = {
+          message,
+          session_id: sessionId,
+          client_api_id: CLIENT_API_ID,
+          page_url: window.location.href,
+          channel: context === 'popup' ? 'popup' : 'inline'
+        };
+
+        const res = await fetch(CHAT_ENDPOINT, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          throw new Error('HTTP ' + res.status);
+        }
+
+        // n8n kann hier flexibel antworten (plain-text oder JSON)
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          // Versuche sinnvolle Felder zu lesen
+          return data.reply || data.answer || data.output || JSON.stringify(data);
+        } else {
+          return await res.text();
+        }
+      }
+
+      async function handleSend(container, input, context) {
+        const text = (input.value || '').trim();
+        if (!text) return;
+
+        appendMessage(container, 'user', text);
+        input.value = '';
+
+        const typingEl = showTyping(container);
+        try {
+          const reply = await sendToBackend(text, context);
+          if (typingEl && typingEl.parentNode) {
+            typingEl.parentNode.removeChild(typingEl);
+          }
+          appendMessage(container, 'bot', reply || '…');
+        } catch (err) {
+          console.error('[Endora] Send failed:', err);
+          if (typingEl && typingEl.parentNode) {
+            typingEl.parentNode.removeChild(typingEl);
+          }
+          appendMessage(container, 'bot', 'Sorry, something went wrong. Please try again.');
+        }
+      }
+
+      // Inline Events
+      if (inlineSend && inlineInput && inlineMessages) {
+        inlineSend.addEventListener('click', function(){
+          handleSend(inlineMessages, inlineInput, 'inline');
+        });
+        inlineInput.addEventListener('keydown', function(e){
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend(inlineMessages, inlineInput, 'inline');
+          }
+        });
+      }
+
+      // Popup Events
+      if (popupSend && popupInput && popupMessages) {
+        popupSend.addEventListener('click', function(){
+          handleSend(popupMessages, popupInput, 'popup');
+        });
+        popupInput.addEventListener('keydown', function(e){
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend(popupMessages, popupInput, 'popup');
+          }
+        });
+      }
+
+      // Bubble / Popup open/close
+      function openPopup() {
+        if (popupOverlay) popupOverlay.style.display = 'block';
+        if (popupWrap)    popupWrap.style.display    = 'block';
+      }
+      function closePopup() {
+        if (popupOverlay) popupOverlay.style.display = 'none';
+        if (popupWrap)    popupWrap.style.display    = 'none';
+      }
+
+      if (bubbleBtn) {
+        bubbleBtn.addEventListener('click', openPopup);
+      }
+      if (popupOverlay) {
+        popupOverlay.addEventListener('click', closePopup);
+      }
+      if (popupClose) {
+        popupClose.addEventListener('click', closePopup);
+      }
+      if (inlineClose) {
+        inlineClose.addEventListener('click', function(){
+          const inlineChat = document.getElementById('inline-chat');
+          if (inlineChat) inlineChat.style.display = 'none';
+          openPopup();
+        });
       }
     })();
   </script>
