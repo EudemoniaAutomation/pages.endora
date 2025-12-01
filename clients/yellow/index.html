@@ -196,7 +196,7 @@
     .popup-wrap{
       position:fixed;top:50%;left:50%;
       transform:translate(-50%,-50%);z-index:1000;
-      display:none;animation:popupIn .3s ease;width:90vw;max-width:400px
+      display:none;animation:popupIn .3s.ease;width:90vw;max-width:400px
     }
     @keyframes popupIn{
       from{transform:translate(-50%,-50%) scale(.8);opacity:0}
@@ -413,9 +413,15 @@
           channel: context === 'popup' ? 'popup' : 'inline'
         };
 
-        const res = await fetch(CHAT_ENDPOINT, {
+        // WICHTIG: client=… anhängen, damit Cloudflare die Mandantenzuordnung hat
+        const url = CHAT_ENDPOINT + '?client=' + encodeURIComponent(CLIENT_API_ID);
+
+        const res = await fetch(url, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: {
+            'content-type': 'application/json',
+            'x-client-id': CLIENT_API_ID
+          },
           body: JSON.stringify(payload)
         });
 
