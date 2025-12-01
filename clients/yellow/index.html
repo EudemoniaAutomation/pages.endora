@@ -304,13 +304,13 @@
     // Fester Client-Identifier für diese Seite
     const CLIENT_API_ID = 'test_client_p';
 
-    // Cloudflare-Chat-Endpoint (Pages Function)
-    const CHAT_ENDPOINT = `https://pages.endora.io/api/chat?client=${encodeURIComponent(CLIENT_API_ID)}`;
+    // Cloudflare-Chat-Endpoint (Basis, ohne Query – ?client=… übernimmt der Loader)
+    const CHAT_ENDPOINT = 'https://pages.endora.io/api/chat';
 
     (function(){
       console.log('[Endora] Initializing yellow client page…');
 
-      // --- Loader für Endora-Core-Script (kannst du in Zukunft nutzen) ---
+      // --- Loader für Endora-Core-Script ---
       var s = document.createElement('script');
       s.src = '/chat-interface-tech-config/v1/coreloader.js';
       s.setAttribute('data-webhook', CHAT_ENDPOINT);
