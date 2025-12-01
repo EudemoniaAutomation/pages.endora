@@ -121,7 +121,7 @@
     .typing{display:flex;gap:6px;align-items:center}
     .dot{
       width:6px;height:6px;border-radius:50%;background:#e2e8f0;
-      opacity:.6;animation:bounce 1s infinite ease-in-out
+      opacity:.6;animation:bounce 1s infinite.ease-in-out
     }
     .dot:nth-child(2){animation-delay:.15s}
     .dot:nth-child(3){animation-delay:.3s}
@@ -196,7 +196,7 @@
     .popup-wrap{
       position:fixed;top:50%;left:50%;
       transform:translate(-50%,-50%);z-index:1000;
-      display:none;animation:popupIn .3s.ease;width:90vw;max-width:400px
+      display:none;animation:popupIn .3s ease;width:90vw;max-width:400px
     }
     @keyframes popupIn{
       from{transform:translate(-50%,-50%) scale(.8);opacity:0}
@@ -304,7 +304,7 @@
     // Fester Client-Identifier für diese Seite
     const CLIENT_API_ID = 'test_client_p';
 
-    // Cloudflare-Chat-Endpoint (Basis, ohne Query – ?client=… übernimmt der Loader)
+    // Cloudflare-Chat-Endpoint (Basis, ohne Query – ?client=… hängt sendToBackend dran)
     const CHAT_ENDPOINT = 'https://pages.endora.io/api/chat';
 
     (function(){
@@ -419,8 +419,7 @@
         const res = await fetch(url, {
           method: 'POST',
           headers: {
-            'content-type': 'application/json',
-            'x-client-id': CLIENT_API_ID
+            'content-type': 'application/json'
           },
           body: JSON.stringify(payload)
         });
