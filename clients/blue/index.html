@@ -274,11 +274,12 @@
     </div>
   </div>
 
-  <!-- TECH: Coreloader (Webhook + Brand; URL wird automatisch kanonisiert) -->
+  <!-- TECH: Coreloader (Pflicht) – sauberer Call über Cloudflare → n8n -->
   <script
-    src="/chat-interface-tech-config/v1/coreloader.js"
-    data-webhook="https://automation.eudemonia-coaching.de/webhook/477363f3-7434-4c31-92e5-fb4da3db4150"
-    data-brand="Endora – digitaler Concierge"
+    src="https://pages.endora.io/chat-interface-tech-config/v1/coreloader.js"
+    data-webhook="https://pages.endora.io/api/chat"
+    data-client-id="test_client_w"
+    data-brand="Endora"
     data-start-open="false">
   </script>
 </body>
