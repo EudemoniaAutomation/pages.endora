@@ -1,4 +1,4 @@
-// Endora Chat Core Loader v1.1
+// Endora Chat Core Loader v1.2
 // Lädt das Chat-Widget, bindet UI-Events und schickt Messages an Cloudflare → n8n.
 
 (function () {
@@ -139,17 +139,39 @@
         return;
       }
 
+      // --------------------------------------------------
+      // Robust: JSON oder Text akzeptieren + universelle Feldnamen
+      // --------------------------------------------------
       let data = null;
+      let rawText = "";
+
+      // Erst JSON versuchen (über clone), sonst plain text
       try {
-        data = await res.json();
+        const clone = res.clone();
+        data = await clone.json();
       } catch (_) {
         data = null;
       }
+
+      if (data === null) {
+        try {
+          rawText = await res.text();
+        } catch (_) {
+          rawText = "";
+        }
+      }
+
       stopTyping();
 
       const reply =
-        (data && (data.reply || data.message || data.text)) ||
-        (typeof data === "string" ? data : "Okay, got it.");
+        // JSON bekannte Felder (n8n Workflows variieren hier!)
+        (data && (data.reply || data.output || data.answer || data.message || data.text)) ||
+        // JSON kann auch direkt ein String sein
+        (typeof data === "string" ? data : null) ||
+        // Plain text fallback
+        (rawText && rawText.trim() ? rawText.trim() : null) ||
+        // letzter Fallback
+        "Okay, got it.";
 
       appendMessage(msgContainer, reply, "bot");
     } catch (err) {
