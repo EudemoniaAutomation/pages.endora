@@ -1,4 +1,4 @@
-// Endora Chat Core Loader v1.2
+// Endora Chat Core Loader v1.3
 // Lädt das Chat-Widget, bindet UI-Events und schickt Messages an Cloudflare → n8n.
 
 (function () {
@@ -116,9 +116,16 @@
           "X-Client-Id": CLIENT_API_ID,
         },
         body: JSON.stringify({
+          // --- NEU: canonical für Routing (dein Workflow erwartet das) ---
+          message: trimmed,
+          session_id: SESSION_ID,
+          client_api_id: CLIENT_API_ID,
+
+          // --- bleibt erhalten: dein bisheriges v1.2 Schema ---
           chatInput: trimmed,
           sessionId: SESSION_ID,
           client_id: CLIENT_API_ID,
+
           page_url: PAGE_URL,
           brand: BRAND,
         }),
@@ -141,16 +148,21 @@
 
       // --------------------------------------------------
       // Robust: JSON oder Text akzeptieren + universelle Feldnamen
+      // + Array-Normalisierung (z.B. [{ output: "..." }])
       // --------------------------------------------------
       let data = null;
       let rawText = "";
 
-      // Erst JSON versuchen (über clone), sonst plain text
       try {
         const clone = res.clone();
         data = await clone.json();
       } catch (_) {
         data = null;
+      }
+
+      // falls n8n ein Array liefert -> erstes Element
+      if (Array.isArray(data)) {
+        data = data.length ? data[0] : null;
       }
 
       if (data === null) {
@@ -163,15 +175,24 @@
 
       stopTyping();
 
-      const reply =
-        // JSON bekannte Felder (n8n Workflows variieren hier!)
-        (data && (data.reply || data.output || data.answer || data.message || data.text)) ||
-        // JSON kann auch direkt ein String sein
-        (typeof data === "string" ? data : null) ||
-        // Plain text fallback
-        (rawText && rawText.trim() ? rawText.trim() : null) ||
-        // letzter Fallback
-        "Okay, got it.";
+      let reply = null;
+
+      if (typeof data === "string") {
+        reply = data;
+      } else if (data && typeof data === "object") {
+        const candidate = data.reply || data.output || data.answer || data.message || data.text;
+        if (typeof candidate === "string") {
+          reply = candidate;
+        } else if (candidate && typeof candidate === "object") {
+          reply = JSON.stringify(candidate);
+        }
+      }
+
+      if (!reply && rawText && rawText.trim()) {
+        reply = rawText.trim();
+      }
+
+      if (!reply) reply = "Okay, got it.";
 
       appendMessage(msgContainer, reply, "bot");
     } catch (err) {
@@ -237,7 +258,6 @@
 
   if (inlineClose) {
     inlineClose.addEventListener("click", function () {
-      // optional: Inline minimieren, Popup öffnen etc.
       openPopup();
     });
   }
