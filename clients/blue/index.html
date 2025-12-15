@@ -72,6 +72,22 @@
     @keyframes msgPop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
     .user{background:linear-gradient(135deg, rgba(74,144,226,.2), rgba(74,144,226,.1));align-self:flex-end;color:#fff;border:1px solid rgba(74,144,226,.3)}
     .bot{background:rgba(255,255,255,.05);align-self:flex-start;color:#e2e8f0;border:1px solid rgba(255,255,255,.1)}
+
+    /* Typing Animation (für initialen "Laden") */
+    .typing{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .dot{
+      width:6px;height:6px;border-radius:50%;
+      background:rgba(255,255,255,.65);
+      animation:blink 1.2s infinite;
+    }
+    .dot:nth-child(2){animation-delay:.15s}
+    .dot:nth-child(3){animation-delay:.3s}
+    @keyframes blink{0%,80%,100%{opacity:.2;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+
     .chat-input-area{display:flex;border-top:1px solid rgba(74,144,226,.2);background:rgba(10,10,10,.9)}
     .chat-input{flex:1;border:none;padding:14px 18px;font-size:14px;background:transparent;color:#fff;outline:none}
     .chat-input::placeholder{color:rgba(148,163,184,.7)}
@@ -169,7 +185,9 @@
             <span>💬 Endora</span>
             <button class="chat-close" id="inline-close" style="display:none">×</button>
           </div>
-          <div class="chat-messages" id="inline-messages"></div>
+          <div class="chat-messages" id="inline-messages">
+            <!-- Welcome + Loading (wird per JS gesetzt, damit es garantiert da ist) -->
+          </div>
           <div class="chat-input-area">
             <input type="text" class="chat-input" id="inline-input" placeholder="Frag z. B.: 'Wo kann ich heute gut essen?'" />
             <button class="chat-send" id="inline-send">Senden</button>
@@ -273,6 +291,67 @@
       </div>
     </div>
   </div>
+
+  <!-- PAGE-ONLY JS: Welcome + QR + "message"-Standard für n8n-Routing -->
+  <script>
+    (function () {
+      // 1) Welcome Message direkt im Chat anzeigen (Deutsch, pro Page customizebar)
+      const inlineMessages = document.getElementById('inline-messages');
+      if (inlineMessages) {
+        const welcome = document.createElement('div');
+        welcome.className = 'msg bot';
+        welcome.textContent = "Willkommen 👋 Ich bin Endora. Ich helfe dir bei Check-in, Hausregeln, Ausstattung und Tipps in der Umgebung. Frag einfach los!";
+        inlineMessages.appendChild(welcome);
+
+        // 2) kleine Typing-Animation als "bereit / loading" (UX)
+        const typing = document.createElement('div');
+        typing.className = 'msg bot';
+        typing.innerHTML = '<span class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
+        inlineMessages.appendChild(typing);
+
+        // nach kurzer Zeit wieder entfernen, damit es nicht "hängen bleibt"
+        setTimeout(() => {
+          try { typing.remove(); } catch (_) {}
+        }, 1200);
+      }
+
+      // 3) QR-Code sichtbar machen + auf die aktuelle Seite/Chat verlinken
+      //    (so wird er IMMER angezeigt, egal ob vorher ein QR gesetzt war)
+      const qrImg = document.getElementById('apt-qr-img');
+      const qrLink = document.getElementById('apt-qr');
+
+      // Ziel: beim Scannen soll genau diese Seite mit #openChat öffnen
+      const chatUrl = window.location.origin + window.location.pathname + '#openChat';
+
+      if (qrLink) qrLink.href = chatUrl;
+
+      if (qrImg) {
+        // QR via Google Chart API (reicht für Demo; später kannst du es durch eigenen Generator ersetzen)
+        const qrSize = 380;
+        const qrSrc = 'https://chart.googleapis.com/chart?cht=qr&chs=' + qrSize + 'x' + qrSize + '&chl=' + encodeURIComponent(chatUrl);
+        qrImg.src = qrSrc;
+      }
+
+      // 4) Wichtig: Wir standardisieren den Body auf "message"
+      //    => ohne Coreloader anzufassen, intercepten wir das "click"/Enter und schicken zusätzlich message.
+      //    ABER: Der Coreloader sendet weiterhin chatInput/sessionId etc.
+      //    Lösung: Wir spiegeln den Input-Wert in ein hidden Feld, das der Coreloader liest? -> geht nicht.
+      //    Daher: Wir setzen die Input-ID NICHT um. Stattdessen machen wir eine kleine Bridge:
+      //    Wir hängen ein "input mirror" an window, das der Coreloader bereits mitsendet? -> nein.
+      //
+      //    Sauberste page-only Variante: wir überschreiben fetch() NICHT global.
+      //    Stattdessen: wir fügen ein data-attr am Script-Tag? -> geht nur wenn Coreloader es liest.
+      //
+      //    => Pragmatiker-Variante: wir lassen Coreloader wie ist,
+      //       aber stellen sicher, dass DEIN Routing in n8n auch chatInput akzeptiert.
+      //
+      //    Du wolltest ausdrücklich "body.message":
+      //    Das können wir nur garantieren, wenn der Coreloader message sendet.
+      //    (Page kann das nicht sicher ändern, ohne den Coreloader zu ersetzen.)
+      //
+      //    Deshalb: Wir ändern hier NICHTS an den Requests – nur UX + QR + Welcome.
+    })();
+  </script>
 
   <!-- TECH: Coreloader (Pflicht) – sauberer Call über Cloudflare → n8n -->
   <script
