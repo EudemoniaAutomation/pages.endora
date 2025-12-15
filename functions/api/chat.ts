@@ -104,6 +104,33 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
     body,
   });
 
-  // 7) Antwort von n8n einfach durchreichen
-  return res;
+  // 7) Antwort von n8n normalisieren → immer { reply: "..." } zurückgeben (universell)
+  const ct = res.headers.get('content-type') || '';
+  const status = res.status;
+
+  // immer erst Text lesen (funktioniert für JSON + Plain Text)
+  const raw = await res.text();
+
+  let data: any = null;
+  if (ct.includes('application/json')) {
+    try { data = JSON.parse(raw); } catch (_) { data = null; }
+  } else {
+    // trotzdem versuchen (n8n kann JSON ohne sauberen CT schicken)
+    try { data = JSON.parse(raw); } catch (_) { data = null; }
+  }
+
+  // n8n liefert oft Arrays: [{ output: "..." }] → erstes Element nehmen
+  if (Array.isArray(data)) data = data.length ? data[0] : null;
+
+  const reply =
+    (data && (data.reply || data.output || data.answer || data.message || data.text)) ||
+    (raw && raw.trim() ? raw.trim() : 'Okay, got it.');
+
+  return new Response(
+    JSON.stringify({ reply }),
+    {
+      status,
+      headers: { 'content-type': 'application/json' },
+    },
+  );
 };
