@@ -1,4 +1,4 @@
-// Endora Chat Core Loader v1.3
+// Endora Chat Core Loader v1.4
 // Lädt das Chat-Widget, bindet UI-Events und schickt Messages an Cloudflare → n8n.
 
 (function () {
@@ -93,25 +93,21 @@
   // 4) Reply robust extrahieren (JSON / Text / Array / n8n-Formate)
   // --------------------------------------------------
   function extractReply(data, rawText) {
-    // 1) Wenn Text da ist und JSON leer: nutz Text
     const txt = (rawText || "").trim();
 
-    // Helper: rekursiv in Arrays / verschachtelte Strukturen rein
     function pick(obj) {
       if (!obj) return null;
 
-      // Array von Items (n8n gibt manchmal [ { output: ... } ] zurück)
       if (Array.isArray(obj)) {
         if (obj.length === 0) return null;
+        // n8n: manchmal [{...}] oder [{ json: {...} }]
         return pick(obj[0]);
       }
 
-      // Direkt ein String
       if (typeof obj === "string") return obj;
 
-      // Object: typische Felder
       if (typeof obj === "object") {
-        // “beste” Felder zuerst
+        // n8n: manchmal { output: "..." } oder { reply: "..." }
         const direct =
           obj.reply ||
           obj.output ||
@@ -121,10 +117,23 @@
 
         if (typeof direct === "string") return direct;
 
-        // manchmal: { output: { text: "..." } } oder { data: [...] }
+        // n8n: oft { output: [{ output: "..." }] } oder { output: { text: "..." } }
         if (obj.output && typeof obj.output === "object") {
-          const nested = obj.output.reply || obj.output.message || obj.output.text || obj.output.answer || obj.output.output;
+          const nested =
+            obj.output.reply ||
+            obj.output.message ||
+            obj.output.text ||
+            obj.output.answer ||
+            obj.output.output;
           if (typeof nested === "string") return nested;
+          const deep = pick(obj.output);
+          if (deep) return deep;
+        }
+
+        // n8n: { json: {...} }
+        if (obj.json) {
+          const nestedFromJson = pick(obj.json);
+          if (nestedFromJson) return nestedFromJson;
         }
 
         if (obj.data) {
@@ -180,7 +189,7 @@
       chatInput: trimmed,
       question: trimmed,
 
-      // Session (beide Schreibweisen, damit nichts bricht)
+      // Session (beide Schreibweisen)
       session_id: SESSION_ID,
       sessionId: SESSION_ID,
 
