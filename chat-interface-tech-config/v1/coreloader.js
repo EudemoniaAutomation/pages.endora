@@ -16,8 +16,7 @@
   const WEBHOOK_BASE = SCRIPT_TAG.getAttribute("data-webhook") || "";
   const CLIENT_API_ID = SCRIPT_TAG.getAttribute("data-client-id") || "";
   const BRAND = SCRIPT_TAG.getAttribute("data-brand") || "Endora";
-  const PAGE_URL =
-    SCRIPT_TAG.getAttribute("data-page-url") || window.location.href;
+  const PAGE_URL = SCRIPT_TAG.getAttribute("data-page-url") || window.location.href;
   const START_OPEN = SCRIPT_TAG.getAttribute("data-start-open") === "true";
 
   if (!WEBHOOK_BASE) {
@@ -82,9 +81,7 @@
       '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
-    return () => {
-      wrap.remove();
-    };
+    return () => wrap.remove();
   }
 
   // einfache Session-ID für diesen Tab
@@ -93,7 +90,72 @@
     "sess_" + Date.now() + "_" + Math.random().toString(16).slice(2);
 
   // --------------------------------------------------
-  // 4) API-Call an Cloudflare → n8n
+  // 4) Reply robust extrahieren (JSON / Text / Array / n8n-Formate)
+  // --------------------------------------------------
+  function extractReply(data, rawText) {
+    // 1) Wenn Text da ist und JSON leer: nutz Text
+    const txt = (rawText || "").trim();
+
+    // Helper: rekursiv in Arrays / verschachtelte Strukturen rein
+    function pick(obj) {
+      if (!obj) return null;
+
+      // Array von Items (n8n gibt manchmal [ { output: ... } ] zurück)
+      if (Array.isArray(obj)) {
+        if (obj.length === 0) return null;
+        return pick(obj[0]);
+      }
+
+      // Direkt ein String
+      if (typeof obj === "string") return obj;
+
+      // Object: typische Felder
+      if (typeof obj === "object") {
+        // “beste” Felder zuerst
+        const direct =
+          obj.reply ||
+          obj.output ||
+          obj.answer ||
+          obj.message ||
+          obj.text;
+
+        if (typeof direct === "string") return direct;
+
+        // manchmal: { output: { text: "..." } } oder { data: [...] }
+        if (obj.output && typeof obj.output === "object") {
+          const nested = obj.output.reply || obj.output.message || obj.output.text || obj.output.answer || obj.output.output;
+          if (typeof nested === "string") return nested;
+        }
+
+        if (obj.data) {
+          const nestedFromData = pick(obj.data);
+          if (nestedFromData) return nestedFromData;
+        }
+
+        if (obj.result) {
+          const nestedFromResult = pick(obj.result);
+          if (nestedFromResult) return nestedFromResult;
+        }
+
+        if (obj.body) {
+          const nestedFromBody = pick(obj.body);
+          if (nestedFromBody) return nestedFromBody;
+        }
+      }
+
+      return null;
+    }
+
+    const fromJson = pick(data);
+    if (fromJson && String(fromJson).trim()) return String(fromJson).trim();
+
+    if (txt) return txt;
+
+    return "Okay, got it.";
+  }
+
+  // --------------------------------------------------
+  // 5) API-Call an Cloudflare → n8n
   // --------------------------------------------------
   async function sendMessageToEndora(message, origin) {
     const trimmed = (message || "").trim();
@@ -108,6 +170,30 @@
 
     const stopTyping = showTyping(msgContainer);
 
+    // ✅ STANDARD: message
+    // ✅ ROBUST: zusätzlich chatInput + question (gleicher Inhalt)
+    const payload = {
+      // Standard
+      message: trimmed,
+
+      // Kompatibilität / Alt-Formate
+      chatInput: trimmed,
+      question: trimmed,
+
+      // Session (beide Schreibweisen, damit nichts bricht)
+      session_id: SESSION_ID,
+      sessionId: SESSION_ID,
+
+      // Client (beide Schreibweisen)
+      client_api_id: CLIENT_API_ID,
+      client_id: CLIENT_API_ID,
+
+      // Kontext
+      page_url: PAGE_URL,
+      brand: BRAND,
+      channel: isPopup ? "popup" : "inline",
+    };
+
     try {
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
@@ -115,99 +201,46 @@
           "Content-Type": "application/json",
           "X-Client-Id": CLIENT_API_ID,
         },
-        body: JSON.stringify({
-          // --- NEU: canonical für Routing (dein Workflow erwartet das) ---
-          message: trimmed,
-          session_id: SESSION_ID,
-          client_api_id: CLIENT_API_ID,
-
-          // --- bleibt erhalten: dein bisheriges v1.2 Schema ---
-          chatInput: trimmed,
-          sessionId: SESSION_ID,
-          client_id: CLIENT_API_ID,
-
-          page_url: PAGE_URL,
-          brand: BRAND,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        console.error(
-          "[Endora Loader] ❌ HTTP-Error von Cloudflare:",
-          res.status,
-          res.statusText
-        );
+        console.error("[Endora Loader] ❌ HTTP-Error von Cloudflare:", res.status, res.statusText);
         stopTyping();
-        appendMessage(
-          msgContainer,
-          "Sorry, something went wrong. (" + res.status + ")",
-          "bot"
-        );
+        appendMessage(msgContainer, "Sorry, something went wrong. (" + res.status + ")", "bot");
         return;
       }
 
-      // --------------------------------------------------
-      // Robust: JSON oder Text akzeptieren + universelle Feldnamen
-      // + Array-Normalisierung (z.B. [{ output: "..." }])
-      // --------------------------------------------------
-      let data = null;
+      // Robust: erst Text lesen, dann versuchen JSON zu parsen
       let rawText = "";
-
       try {
-        const clone = res.clone();
-        data = await clone.json();
+        rawText = await res.text();
       } catch (_) {
-        data = null;
+        rawText = "";
       }
 
-      // falls n8n ein Array liefert -> erstes Element
-      if (Array.isArray(data)) {
-        data = data.length ? data[0] : null;
-      }
-
-      if (data === null) {
+      let data = null;
+      if (rawText && rawText.trim()) {
         try {
-          rawText = await res.text();
+          data = JSON.parse(rawText);
         } catch (_) {
-          rawText = "";
+          data = null;
         }
       }
 
       stopTyping();
 
-      let reply = null;
-
-      if (typeof data === "string") {
-        reply = data;
-      } else if (data && typeof data === "object") {
-        const candidate = data.reply || data.output || data.answer || data.message || data.text;
-        if (typeof candidate === "string") {
-          reply = candidate;
-        } else if (candidate && typeof candidate === "object") {
-          reply = JSON.stringify(candidate);
-        }
-      }
-
-      if (!reply && rawText && rawText.trim()) {
-        reply = rawText.trim();
-      }
-
-      if (!reply) reply = "Okay, got it.";
-
+      const reply = extractReply(data, rawText);
       appendMessage(msgContainer, reply, "bot");
     } catch (err) {
       console.error("[Endora Loader] ❌ Fetch failed:", err);
       stopTyping();
-      appendMessage(
-        msgContainer,
-        "Connection problem – please try again in a moment.",
-        "bot"
-      );
+      appendMessage(msgContainer, "Connection problem – please try again in a moment.", "bot");
     }
   }
 
   // --------------------------------------------------
-  // 5) Event Listener – Inline und Popup
+  // 6) Event Listener – Inline und Popup
   // --------------------------------------------------
   inlineSend.addEventListener("click", function () {
     sendMessageToEndora(inlineInput.value, "inline");
@@ -224,6 +257,7 @@
     popupSend.addEventListener("click", function () {
       sendMessageToEndora(popupInput.value, "popup");
     });
+
     popupInput.addEventListener("keydown", function (ev) {
       if (ev.key === "Enter" && !ev.shiftKey) {
         ev.preventDefault();
@@ -238,23 +272,16 @@
     popupWrap.style.display = "block";
     popupOverlay.style.display = "block";
   }
+
   function closePopup() {
     if (!popupWrap || !popupOverlay) return;
     popupWrap.style.display = "none";
     popupOverlay.style.display = "none";
   }
 
-  if (bubbleBtn) {
-    bubbleBtn.addEventListener("click", function () {
-      openPopup();
-    });
-  }
-  if (popupOverlay) {
-    popupOverlay.addEventListener("click", closePopup);
-  }
-  if (popupClose) {
-    popupClose.addEventListener("click", closePopup);
-  }
+  if (bubbleBtn) bubbleBtn.addEventListener("click", openPopup);
+  if (popupOverlay) popupOverlay.addEventListener("click", closePopup);
+  if (popupClose) popupClose.addEventListener("click", closePopup);
 
   if (inlineClose) {
     inlineClose.addEventListener("click", function () {
@@ -262,9 +289,7 @@
     });
   }
 
-  if (START_OPEN) {
-    openPopup();
-  }
+  if (START_OPEN) openPopup();
 
   console.log("[Endora Loader] ready.");
 })();
