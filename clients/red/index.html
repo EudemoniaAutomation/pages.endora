@@ -20,46 +20,62 @@
     @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.9}}
     .hero-title{font-size:2.2rem;font-weight:900;line-height:1.1;margin-bottom:15px;background:linear-gradient(135deg,#fff 0%,var(--acc) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 0 80px rgba(255,16,68,.5)}
     .hero-subtitle{font-size:1rem;color:var(--muted);line-height:1.5;margin-bottom:20px}
+
     .chat-window{width:100%;height:60vh;min-height:400px;max-height:600px;background:rgba(10,10,10,.9);border:1px solid var(--card-border);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 1px rgba(255,16,68,.1);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;flex-direction:column;position:relative}
     .chat-window::before{content:"";position:absolute;inset:-2px;border-radius:20px;background:linear-gradient(135deg,var(--acc),transparent,var(--acc));opacity:.3;animation:borderGlow 3s infinite;z-index:-1}
     @keyframes borderGlow{0%,100%{opacity:.3}50%{opacity:.6}}
     .chat-header{background:linear-gradient(90deg,var(--acc),#cc0d36);color:#000;padding:15px 20px;font-weight:800;display:flex;align-items:center;justify-content:space-between;font-size:1.1rem}
     .chat-close{background:transparent;border:none;color:#000;font-size:24px;font-weight:900;cursor:pointer;transition:.3s;display:none}
     .chat-close:hover{transform:rotate(90deg)}
+
     .chat-messages{flex:1;overflow-y:auto;padding:20px;background:rgba(5,5,5,.6);display:flex;flex-direction:column;gap:12px}
     .msg{padding:12px 16px;border-radius:18px;max-width:85%;font-size:14px;line-height:1.5;animation:msgPop .3s ease}
     @keyframes msgPop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
     .user{background:linear-gradient(135deg,rgba(255,16,68,.2),rgba(255,16,68,.1));align-self:flex-end;color:#fff;border:1px solid rgba(255,16,68,.3)}
     .bot{background:rgba(255,255,255,.05);align-self:flex-start;color:#e2e8f0;border:1px solid rgba(255,255,255,.1)}
-    .msg.bot p{margin:0 0 .5rem 0}
-    .msg.bot ul{margin:.25rem 0 .5rem 1.25rem;padding:0}
-    .msg.bot li{margin:.15rem 0}
-    .typing{display:flex;gap:6px;align-items:center}
+
+    /* Typing animation for coreloader */
+    .msg.bot.typing{display:flex;gap:6px;align-items:center}
     .dot{width:6px;height:6px;border-radius:50%;background:#e2e8f0;opacity:.6;animation:bounce 1s infinite ease-in-out}
     .dot:nth-child(2){animation-delay:.15s}
     .dot:nth-child(3){animation-delay:.3s}
     @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
+
     .chat-input-area{display:flex;border-top:1px solid var(--card-border);background:rgba(10,10,10,.9);padding:0}
     .chat-input{flex:1;border:none;padding:18px 20px;font-size:16px;background:transparent;color:#fff;outline:none}
     .chat-input::placeholder{color:rgba(148,163,184,.7)}
     .chat-send{background:linear-gradient(135deg,var(--acc),#cc0d36);color:#000;border:none;padding:0 30px;cursor:pointer;font-weight:800;transition:.3s;font-size:14px;text-transform:uppercase;letter-spacing:.5px}
     .chat-send:hover{background:linear-gradient(135deg,#ff3366,#ff1044);transform:translateY(-1px)}
     .chat-send:active{transform:translateY(0)}
+
     .qr-section{display:flex;align-items:center;justify-content:center;margin-top:20px;position:relative}
     .qr-wrapper{position:relative;width:var(--qr_size);height:var(--qr_size)}
     .qr-container{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.90));border-radius:16px;padding:12px;text-decoration:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 20px 60px rgba(255,16,68,.30),inset 0 0 20px rgba(255,16,68,.12)}
     .qr-container:hover{transform:scale(1.03)}
     .qr-container img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges}
+
     .chat-bubble{position:absolute;bottom:-8px;right:-8px;width:40px;height:40px;background:linear-gradient(135deg,var(--acc),#cc0d36);border-radius:50%;display:grid;place-items:center;cursor:pointer;font-size:18px;box-shadow:0 10px 40px rgba(255,16,68,.5),inset 0 -3px 10px rgba(0,0,0,.2);transition:.3s;animation:bubblePulse 2s infinite;z-index:10}
     @keyframes bubblePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
     .chat-badge{position:absolute;top:-5px;right:-5px;background:#00ff88;color:#000;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:10px;display:none}
+
     .popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:999;display:none}
     .popup-wrap{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1000;display:none;animation:popupIn .3s ease;width:90vw;max-width:400px}
     @keyframes popupIn{from{transform:translate(-50%,-50%) scale(.8);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+
     .chat-messages::-webkit-scrollbar{width:4px}
     .chat-messages::-webkit-scrollbar-track{background:rgba(255,255,255,.05)}
     .chat-messages::-webkit-scrollbar-thumb{background:var(--acc);border-radius:2px}
-    @media (max-width:480px){body{padding:10px}.hero-title{font-size:1.8rem}.hero-subtitle{font-size:.9rem}.chat-window{height:70vh;min-height:350px;border-radius:16px}.chat-input{font-size:16px;padding:16px 18px}.chat-send{padding:0 24px}.header{margin-bottom:20px}.qr-section{margin-top:15px}}
+
+    @media (max-width:480px){
+      body{padding:10px}
+      .hero-title{font-size:1.8rem}
+      .hero-subtitle{font-size:.9rem}
+      .chat-window{height:70vh;min-height:350px;border-radius:16px}
+      .chat-input{font-size:16px;padding:16px 18px}
+      .chat-send{padding:0 24px}
+      .header{margin-bottom:20px}
+      .qr-section{margin-top:15px}
+    }
     @media (max-height:600px){.chat-window{height:50vh;min-height:300px}}
   </style>
 </head>
@@ -76,7 +92,7 @@
     <div class="particle" style="left:90%;animation-delay:1s"></div>
   </div>
 
-  <div class="chat-container">
+  <div class="chat-container" id="openChat">
     <div class="header">
       <div class="hero-badge">Premium Guest Experience</div>
       <h1 class="hero-title">Endora your digital Concierge</h1>
@@ -122,118 +138,89 @@
     </div>
   </div>
 
+  <!-- Coreloader (Standard) -->
+  <script
+    src="https://pages.endora.io/chat-interface-tech-config/v1/coreloader.js"
+    data-webhook="https://pages.endora.io/api/chat"
+    data-client-id="test_client_red"
+    data-start-open="false">
+  </script>
+
+  <!-- Page script: QR + Deep-Link open + Welcome message (keine eigene Send-Logik) -->
   <script>
-  (() => {
-    const webhookUrl = "https://automation.eudemonia-coaching.de/webhook/477363f3-7434-4c31-92e5-fb4da3db4150";
+    (function () {
+      const QR_IMG  = document.getElementById("apt-qr-img");
+      const QR_LINK = document.getElementById("apt-qr");
+      const bubbleBtn = document.getElementById("bubble-btn");
 
-    const inline = {
-      messages: document.getElementById('inline-messages'),
-      input: document.getElementById('inline-input'),
-      send: document.getElementById('inline-send')
-    };
-    const popup = {
-      wrap: document.getElementById('popup-wrap'),
-      overlay: document.getElementById('popup-overlay'),
-      messages: document.getElementById('popup-messages'),
-      input: document.getElementById('popup-input'),
-      send: document.getElementById('popup-send'),
-      closeBtn: document.getElementById('popup-close')
-    };
-    const bubbleBtn = document.getElementById('bubble-btn');
-    const bubbleBadge = document.getElementById('bubble-badge');
-    const QR_IMG = document.getElementById('apt-qr-img');
-    const QR_LINK = document.getElementById('apt-qr');
+      function openChatPopup() {
+        // Coreloader öffnet den Popup-Chat über bubble-btn Click
+        if (bubbleBtn) bubbleBtn.click();
+      }
 
-    function openPopup(){popup.wrap.style.display='block';popup.overlay.style.display='block';bubbleBadge.style.display='none';setTimeout(()=>popup.input?.focus(),50)}
-    function closePopup(){popup.wrap.style.display='none';popup.overlay.style.display='none'}
-    function togglePopup(){(popup.wrap.style.display==='block')?closePopup():openPopup()}
-    bubbleBtn.addEventListener('click',togglePopup);
-    popup.closeBtn.addEventListener('click',closePopup);
-    popup.overlay.addEventListener('click',closePopup);
-    QR_LINK.addEventListener('click',(e)=>{e.preventDefault();openPopup()});
+      // QR: auf diese Page verlinken + openChat triggern
+      (function setQr(){
+        const base = location.href.split("#")[0];
+        const url = new URL(base);
+        url.searchParams.set("openChat","1");
+        const target = url.toString() + "#openChat";
 
-    (function setQr(){
-      const base=location.href.split('#')[0];
-      const url=new URL(base);url.searchParams.set('openChat','1');
-      const target=url.toString()+'#openChat';
-      const src1='https://quickchart.io/qr?text='+encodeURIComponent(target)+'&size=512&margin=8&ecLevel=H&format=png&dark=%23000000&light=%23ffffff00';
-      const src2='https://chart.googleapis.com/chart?cht=qr&chs=512x512&chld=H|1&chl='+encodeURIComponent(target);
-      const img=QR_IMG;img.onerror=function(){if(img.dataset.fallback!=='1'){img.dataset.fallback='1';img.src=src2}};img.src=src1;
+        const src1 =
+          "https://quickchart.io/qr?text=" + encodeURIComponent(target) +
+          "&size=512&margin=8&ecLevel=H&format=png&dark=%23000000&light=%23ffffff00";
+        const src2 =
+          "https://chart.googleapis.com/chart?cht=qr&chs=512x512&chld=H|1&chl=" + encodeURIComponent(target);
+
+        if (QR_IMG) {
+          QR_IMG.onerror = function () {
+            if (QR_IMG.dataset.fallback !== "1") {
+              QR_IMG.dataset.fallback = "1";
+              QR_IMG.src = src2;
+            }
+          };
+          QR_IMG.src = src1;
+        }
+
+        // Link bleibt sichtbar & klickbar
+        if (QR_LINK) {
+          QR_LINK.href = target;
+          QR_LINK.addEventListener("click", function (e) {
+            e.preventDefault();
+            openChatPopup();
+          });
+        }
+      })();
+
+      // Deep-link: openChat=1 oder #openChat -> Popup öffnen
+      function tryOpenFromUrl() {
+        const s = new URLSearchParams(location.search);
+        if (location.hash === "#openChat" || s.get("openChat") === "1") {
+          setTimeout(openChatPopup, 250);
+        }
+      }
+      window.addEventListener("hashchange", tryOpenFromUrl);
+      tryOpenFromUrl();
+
+      // Welcome message (einmalig) – in beiden Fenstern
+      function appendWelcome(containerId, text) {
+        const c = document.getElementById(containerId);
+        if (!c) return;
+        if (c.dataset.welcomeSet === "1") return;
+        c.dataset.welcomeSet = "1";
+
+        const div = document.createElement("div");
+        div.className = "msg bot";
+        div.textContent = text;
+        c.appendChild(div);
+        c.scrollTop = c.scrollHeight;
+      }
+
+      const welcome =
+        "Welcome! 👋 I'm here to help with check-in, house rules, and local recommendations. Just ask away!";
+
+      appendWelcome("inline-messages", welcome);
+      appendWelcome("popup-messages", welcome);
     })();
-
-    function tryOpenFromUrl(){
-      const s=new URLSearchParams(location.search);
-      if(location.hash==='#openChat'||s.get('openChat')==='1')openPopup();
-    }
-    window.addEventListener('hashchange',tryOpenFromUrl);
-    tryOpenFromUrl();
-
-    const urlRegex=/\b(https?:\/\/[^\s<>]+[^\s<\.)])/gi;
-    function stripHtml(raw){if(!raw)return'';let s=raw.replace(/<a\b[^>]*>(.*?)<\/a>/gi,(_m,inner)=>inner);s=s.replace(/<[^>]+>/g,'');return s}
-    function escapeHtml(s){return(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-    function linkifyNamesAndUrls(text){
-      let html=escapeHtml(text||'');
-      const patterns=[/([A-ZÄÖÜ][\wÀ-ž&'’.\- ]{1,60})\s*(?:\(|（)\s*(https?:\/\/[^\s<>]+[^\s<\.)])\s*(?:\)|）)/g,/([A-ZÄÖÜ][\wÀ-ž&'’.\- ]{1,60})\s*(?:[–—-]|:)\s*(https?:\/\/[^\s<>]+[^\s<\.)])/g];
-      function makeAnchor(name,url){return`${escapeHtml(name.trim())} <a href="${url}" target="_blank" rel="noopener noreferrer">Link</a>`}
-      patterns.forEach(re=>{html=html.replace(re,(_m,name,url)=>makeAnchor(name,url))});
-      html=html.split(/(<a\b[^>]*>.*?<\/a>)/gi).map(seg=>/^<a\b/i.test(seg)?seg:seg.replace(urlRegex,(u)=>`<a href="${u}" target="_blank" rel="noopener noreferrer">Link</a>`)).join('');
-      return html;
-    }
-    function mdLightToHtml(text){
-      const t=text.replace(/\r\n/g,'\n');const lines=t.split('\n');const chunks=[];let currList=null;
-      const pushPara=(para)=>{if(para.trim())chunks.push({type:'p',text:para.trim()})};
-      const pushList=()=>{if(currList&&currList.length){chunks.push({type:'ul',items:currList})}currList=null};
-      for(let raw of lines){
-        const line=raw.trimEnd();const bullet=/^[-•]\s+(.+)$/.exec(line);
-        if(bullet){if(!currList)currList=[];currList.push(bullet[1].trim())}
-        else if(line===''){pushList();chunks.push({type:'br'})}
-        else{pushList();if(chunks.length&&chunks[chunks.length-1].type==='p'){chunks[chunks.length-1].text+=' '+line.trim()}else{chunks.push({type:'p',text:line.trim()})}}
-      }
-      pushList();
-      let html='';for(const c of chunks){if(c.type==='p'){html+=`<p>${linkifyNamesAndUrls(c.text)}</p>`}else if(c.type==='ul'){html+='<ul>'+c.items.map(it=>`<li>${linkifyNamesAndUrls(it)}</li>`).join('')+'</ul>'}else if(c.type==='br'){html+='<p style="margin:.35rem 0;"></p>'}}
-      return html||linkifyNamesAndUrls(t);
-    }
-    function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e}
-    function appendMsgHtml(target,html,sender){const m=el('div','msg '+sender);m.innerHTML=html;target.appendChild(m);target.scrollTop=target.scrollHeight}
-    function appendMsgText(target,text,sender){const m=el('div','msg '+sender);m.textContent=text;target.appendChild(m);target.scrollTop=target.scrollHeight}
-    function showTyping(target){const wrap=el('div','msg bot');const t=el('div','typing');t.innerHTML='<span class="dot"></span><span class="dot"></span><span class="dot"></span>';wrap.appendChild(t);target.appendChild(wrap);target.scrollTop=target.scrollHeight;return wrap}
-    function removeTyping(node){if(node&&typeof node.remove==='function'){node.remove()}}
-    function addBotAll(rawText){const clean=stripHtml(rawText||'');const html=mdLightToHtml(clean);appendMsgHtml(inline.messages,html,'bot');appendMsgHtml(popup.messages,html,'bot');if(popup.wrap.style.display!=='block'){bubbleBadge.style.display='block';bubbleBadge.textContent='1'}}
-
-    function renderVoucherMessage(v){
-      const exp=v&&v.expires_at?new Date(v.expires_at).toLocaleString():'';
-      const html=`<p><strong>🎟️ Your voucher is ready</strong></p>${exp?`<p>Valid until: ${exp}</p>`:''}<p><img src="${v.qr_url}" alt="Voucher QR" style="width:180px;height:180px;border-radius:8px;display:block;margin-top:8px"/></p>`;
-      appendMsgHtml(inline.messages,html,'bot');
-      appendMsgHtml(popup.messages,html,'bot');
-      if(popup.wrap.style.display!=='block'){bubbleBadge.style.display='block';bubbleBadge.textContent='1'}
-    }
-
-    addBotAll("Welcome! 👋 I'm here to help with check-in, house rules, and local recommendations. Just ask away!");
-
-    async function sendMessage(from){
-      const input=from==='popup'?popup.input:inline.input;
-      const text=(input.value||'').trim();if(!text)return;
-      appendMsgText(inline.messages,text,'user');appendMsgText(popup.messages,text,'user');input.value='';
-      const typingInline=showTyping(inline.messages);const typingPopup=showTyping(popup.messages);
-      try{
-        const res=await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json, text/plain; q=0.9, */*; q=0.8'},body:JSON.stringify({question:text,url:window.location.href,meta:{source:from}})});
-        const ct=(res.headers.get('content-type')||'').toLowerCase();
-        let data=null;let answer='';
-        if(ct.includes('application/json')){try{data=await res.json()}catch{}}
-        else{try{answer=await res.text()}catch{}}
-        removeTyping(typingInline);removeTyping(typingPopup);
-        if(data&&(data.type==='voucher_issued'||data.qr_url)){renderVoucherMessage(data)}
-        else{answer=answer||(data?.answer||data?.text||data?.message||data?.content||'');addBotAll(answer||'No response received.')}
-      }catch(e){
-        removeTyping(typingInline);removeTyping(typingPopup);addBotAll('Error sending message.')
-      }
-    }
-
-    document.getElementById('inline-send').addEventListener('click',()=>sendMessage('inline'));
-    document.getElementById('popup-send').addEventListener('click',()=>sendMessage('popup'));
-    document.getElementById('inline-input').addEventListener('keypress',e=>{if(e.key==='Enter')sendMessage('inline')});
-    document.getElementById('popup-input').addEventListener('keypress',e=>{if(e.key==='Enter')sendMessage('popup')});
-  })();
   </script>
 </body>
 </html>
