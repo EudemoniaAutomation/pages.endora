@@ -3,11 +3,40 @@ export interface Env {
   CLIENT_AUTH_KV: KVNamespace;    // KV-Binding: key = client_api_id, value = { api_key }
 }
 
-// einfache Origin-Whitelist (kannst du bei Bedarf erweitern)
+// einfache Origin-Whitelist (erweitert für endora.io + systeme.io iframe)
 const ALLOWED_ORIGINS = new Set<string>([
   'https://pages.endora.io',
   'https://cloud.endora.io',
+  'https://endora.io',
+  'https://www.endora.io',
 ]);
+
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return true; // same-origin / no Origin header
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+
+  // allow any subdomain of systeme.io (iframe/hosted pages)
+  try {
+    const u = new URL(origin);
+    return u.hostname === 'systeme.io' || u.hostname.endsWith('.systeme.io');
+  } catch {
+    return false;
+  }
+}
+
+function corsHeaders(origin: string): Record<string, string> {
+  // Wenn Origin erlaubt → genau dieses Origin spiegeln, sonst nichts setzen
+  const allowed = origin && isAllowedOrigin(origin);
+  return allowed
+    ? {
+        'access-control-allow-origin': origin,
+        'access-control-allow-methods': 'POST, OPTIONS',
+        'access-control-allow-headers': 'content-type, authorization, x-client-id',
+        'access-control-max-age': '86400',
+        'vary': 'Origin',
+      }
+    : {};
+}
 
 // Rate-Limiter-Konfiguration
 const RATE_LIMIT_WINDOW_SECONDS = 60; // Zeitfenster
@@ -31,18 +60,41 @@ async function isRateLimited(env: Env, clientApiId: string): Promise<boolean> {
   return false;
 }
 
+// ✅ Preflight (wichtig für Cross-Origin von endora.io / systeme.io -> pages.endora.io)
+export const onRequestOptions: PagesFunction<Env> = async (ctx) => {
+  const origin = ctx.request.headers.get('origin') || '';
+  if (origin && !isAllowedOrigin(origin)) {
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+      status: 403,
+      headers: {
+        'content-type': 'application/json',
+      },
+    });
+  }
+
+  return new Response(null, {
+    status: 204,
+    headers: {
+      ...corsHeaders(origin),
+    },
+  });
+};
+
 export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   const { request, env } = ctx;
   const url = new URL(request.url);
 
   // 1) Origin check (optional, aber empfohlen)
   const origin = request.headers.get('origin') || '';
-  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+  if (origin && !isAllowedOrigin(origin)) {
     return new Response(
       JSON.stringify({ error: 'Origin not allowed' }),
       {
         status: 403,
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...corsHeaders(origin),
+        },
       },
     );
   }
@@ -58,7 +110,10 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
       JSON.stringify({ error: 'Missing client identifier' }),
       {
         status: 400,
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...corsHeaders(origin),
+        },
       },
     );
   }
@@ -69,7 +124,10 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
       JSON.stringify({ error: 'Rate limit exceeded' }),
       {
         status: 429,
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...corsHeaders(origin),
+        },
       },
     );
   }
@@ -82,7 +140,10 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
       JSON.stringify({ error: 'Unknown client' }),
       {
         status: 401,
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...corsHeaders(origin),
+        },
       },
     );
   }
@@ -130,7 +191,10 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
     JSON.stringify({ reply }),
     {
       status,
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...corsHeaders(origin),
+      },
     },
   );
 };
