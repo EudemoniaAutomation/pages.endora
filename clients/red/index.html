@@ -27,15 +27,18 @@
     .chat-header{background:linear-gradient(90deg,var(--acc),#cc0d36);color:#000;padding:15px 20px;font-weight:800;display:flex;align-items:center;justify-content:space-between;font-size:1.1rem}
     .chat-close{background:transparent;border:none;color:#000;font-size:24px;font-weight:900;cursor:pointer;transition:.3s;display:none}
     .chat-close:hover{transform:rotate(90deg)}
-
     .chat-messages{flex:1;overflow-y:auto;padding:20px;background:rgba(5,5,5,.6);display:flex;flex-direction:column;gap:12px}
     .msg{padding:12px 16px;border-radius:18px;max-width:85%;font-size:14px;line-height:1.5;animation:msgPop .3s ease}
     @keyframes msgPop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
     .user{background:linear-gradient(135deg,rgba(255,16,68,.2),rgba(255,16,68,.1));align-self:flex-end;color:#fff;border:1px solid rgba(255,16,68,.3)}
     .bot{background:rgba(255,255,255,.05);align-self:flex-start;color:#e2e8f0;border:1px solid rgba(255,255,255,.1)}
+    .msg.bot p{margin:0 0 .5rem 0}
+    .msg.bot ul{margin:.25rem 0 .5rem 1.25rem;padding:0}
+    .msg.bot li{margin:.15rem 0}
 
-    /* Typing animation for coreloader */
+    /* Typing indicator – kompatibel mit Coreloader */
     .msg.bot.typing{display:flex;gap:6px;align-items:center}
+    .typing{display:flex;gap:6px;align-items:center}
     .dot{width:6px;height:6px;border-radius:50%;background:#e2e8f0;opacity:.6;animation:bounce 1s infinite ease-in-out}
     .dot:nth-child(2){animation-delay:.15s}
     .dot:nth-child(3){animation-delay:.3s}
@@ -50,7 +53,7 @@
 
     .qr-section{display:flex;align-items:center;justify-content:center;margin-top:20px;position:relative}
     .qr-wrapper{position:relative;width:var(--qr_size);height:var(--qr_size)}
-    .qr-container{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.90));border-radius:16px;padding:12px;text-decoration:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 20px 60px rgba(255,16,68,.30),inset 0 0 20px rgba(255,16,68,.12)}
+    .qr-container{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.90));border-radius:16px;padding:12px;text-decoration:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 20px 60px rgba(255,16,68,.30),inset 0 0 20px rgba(255,16,68,.12);transition:.2s}
     .qr-container:hover{transform:scale(1.03)}
     .qr-container img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges}
 
@@ -80,6 +83,8 @@
   </style>
 </head>
 <body>
+  <div id="openChat" style="position:absolute;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none"></div>
+
   <div class="particles">
     <div class="particle" style="left:10%;animation-delay:0s"></div>
     <div class="particle" style="left:20%;animation-delay:2s"></div>
@@ -92,7 +97,7 @@
     <div class="particle" style="left:90%;animation-delay:1s"></div>
   </div>
 
-  <div class="chat-container" id="openChat">
+  <div class="chat-container">
     <div class="header">
       <div class="hero-badge">Premium Guest Experience</div>
       <h1 class="hero-title">Endora your digital Concierge</h1>
@@ -138,89 +143,78 @@
     </div>
   </div>
 
-  <!-- Coreloader (Standard) -->
-  <script
-    src="https://pages.endora.io/chat-interface-tech-config/v1/coreloader.js"
-    data-webhook="https://pages.endora.io/api/chat"
-    data-client-id="test_client_red"
-    data-start-open="false">
-  </script>
-
-  <!-- Page script: QR + Deep-Link open + Welcome message (keine eigene Send-Logik) -->
+  <!-- Page-only: Welcome message + QR target + auto-open from URL (NO sending logic here) -->
   <script>
     (function () {
-      const QR_IMG  = document.getElementById("apt-qr-img");
-      const QR_LINK = document.getElementById("apt-qr");
-      const bubbleBtn = document.getElementById("bubble-btn");
+      // 1) Welcome message (per page customizable)
+      const WELCOME = "Welcome! 👋 I'm here to help with check-in, house rules, and local recommendations. Just ask away!";
 
-      function openChatPopup() {
-        // Coreloader öffnet den Popup-Chat über bubble-btn Click
-        if (bubbleBtn) bubbleBtn.click();
+      function injectWelcome(id) {
+        const box = document.getElementById(id);
+        if (!box || box.dataset.welcomeInjected === "1") return;
+        const m = document.createElement("div");
+        m.className = "msg bot";
+        m.textContent = WELCOME;
+        box.appendChild(m);
+        box.dataset.welcomeInjected = "1";
+        box.scrollTop = box.scrollHeight;
+      }
+      injectWelcome("inline-messages");
+      injectWelcome("popup-messages");
+
+      // 2) QR code always links to this page + openChat flag
+      const QR_IMG = document.getElementById("apt-qr-img");
+      const QR_LINK = document.getElementById("apt-qr");
+
+      function buildTargetUrl() {
+        const base = window.location.href.split("#")[0];
+        const url = new URL(base);
+        url.searchParams.set("openChat", "1");
+        url.hash = "openChat";
+        return url.toString();
       }
 
-      // QR: auf diese Page verlinken + openChat triggern
-      (function setQr(){
-        const base = location.href.split("#")[0];
-        const url = new URL(base);
-        url.searchParams.set("openChat","1");
-        const target = url.toString() + "#openChat";
+      const target = buildTargetUrl();
+      if (QR_LINK) QR_LINK.href = target;
 
+      if (QR_IMG) {
         const src1 =
-          "https://quickchart.io/qr?text=" + encodeURIComponent(target) +
+          "https://quickchart.io/qr?text=" +
+          encodeURIComponent(target) +
           "&size=512&margin=8&ecLevel=H&format=png&dark=%23000000&light=%23ffffff00";
         const src2 =
-          "https://chart.googleapis.com/chart?cht=qr&chs=512x512&chld=H|1&chl=" + encodeURIComponent(target);
+          "https://chart.googleapis.com/chart?cht=qr&chs=512x512&chld=H|1&chl=" +
+          encodeURIComponent(target);
 
-        if (QR_IMG) {
-          QR_IMG.onerror = function () {
-            if (QR_IMG.dataset.fallback !== "1") {
-              QR_IMG.dataset.fallback = "1";
-              QR_IMG.src = src2;
-            }
-          };
-          QR_IMG.src = src1;
-        }
+        QR_IMG.onerror = function () {
+          if (QR_IMG.dataset.fallback !== "1") {
+            QR_IMG.dataset.fallback = "1";
+            QR_IMG.src = src2;
+          }
+        };
+        QR_IMG.src = src1;
+      }
 
-        // Link bleibt sichtbar & klickbar
-        if (QR_LINK) {
-          QR_LINK.href = target;
-          QR_LINK.addEventListener("click", function (e) {
-            e.preventDefault();
-            openChatPopup();
-          });
-        }
-      })();
-
-      // Deep-link: openChat=1 oder #openChat -> Popup öffnen
+      // 3) Auto-open chat when scanned (works with coreloader bubble handler)
       function tryOpenFromUrl() {
-        const s = new URLSearchParams(location.search);
-        if (location.hash === "#openChat" || s.get("openChat") === "1") {
-          setTimeout(openChatPopup, 250);
+        const s = new URLSearchParams(window.location.search);
+        if (window.location.hash === "#openChat" || s.get("openChat") === "1") {
+          const btn = document.getElementById("bubble-btn");
+          if (btn) btn.click();
         }
       }
       window.addEventListener("hashchange", tryOpenFromUrl);
       tryOpenFromUrl();
-
-      // Welcome message (einmalig) – in beiden Fenstern
-      function appendWelcome(containerId, text) {
-        const c = document.getElementById(containerId);
-        if (!c) return;
-        if (c.dataset.welcomeSet === "1") return;
-        c.dataset.welcomeSet = "1";
-
-        const div = document.createElement("div");
-        div.className = "msg bot";
-        div.textContent = text;
-        c.appendChild(div);
-        c.scrollTop = c.scrollHeight;
-      }
-
-      const welcome =
-        "Welcome! 👋 I'm here to help with check-in, house rules, and local recommendations. Just ask away!";
-
-      appendWelcome("inline-messages", welcome);
-      appendWelcome("popup-messages", welcome);
     })();
+  </script>
+
+  <!-- TECH: Coreloader (Pflicht) – Cloudflare → n8n, Body Standard = message -->
+  <script
+    src="https://pages.endora.io/chat-interface-tech-config/v1/coreloader.js"
+    data-webhook="https://pages.endora.io/api/chat"
+    data-client-id="test_client_m"
+    data-brand="Endora"
+    data-start-open="false">
   </script>
 </body>
 </html>
