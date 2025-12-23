@@ -264,175 +264,38 @@
   </div>
 </div>
 
-<!-- TECH: Loader dynamisch einfügen, mit kanonischer data-page-url -->
+<!-- ✅ FIX: Coreloader korrekt laden + korrekt konfigurieren (Design unverändert) -->
 <script>
   (function(){
     var s = document.createElement('script');
-    s.src = '/chat-interface-tech-config/v1/coreloader.js';
+
+    // WICHTIG: absolut, damit es auf GitHub/Cloudflare Pages NICHT 404t
+    s.src = 'https://pages.endora.io/chat-interface-tech-config/v1/coreloader.js';
+
+    // WICHTIG: Coreloader erwartet data-webhook + data-client-id
+    s.setAttribute('data-webhook', 'https://pages.endora.io/api/chat');
 
     // Client
-    var CLIENT_API_ID = 'test_client_f';
-    s.setAttribute('data-client-api-id', CLIENT_API_ID);
-    s.setAttribute('data-chat-endpoint', 'https://pages.endora.io/api/chat');
+    s.setAttribute('data-client-id', 'test_client_f');
 
+    // Brand / URL
     s.setAttribute('data-brand', 'Endora – digitaler Concierge');
-
-    // Kanonische URL: origin + pathname (keine Query/Hash)
-    var canonical = location.origin + location.pathname;
-    s.setAttribute('data-page-url', canonical);
-
+    s.setAttribute('data-page-url', location.origin + location.pathname);
     s.setAttribute('data-start-open', 'false');
+
     document.body.appendChild(s);
   })();
 </script>
 
-<!-- ✅ FIX: QR + Send/Enter wiring (Design bleibt unverändert) -->
+<!-- ✅ QR sichtbar machen (nur QR-Image setzen; Chat bleibt über Coreloader) -->
 <script>
-(function(){
-  const CLIENT_API_ID = "test_client_f";
-  const CHAT_ENDPOINT = "https://pages.endora.io/api/chat?client=" + encodeURIComponent(CLIENT_API_ID);
+  (function(){
+    var img = document.getElementById('apt-qr-img');
+    if(!img) return;
 
-  const inlineMessages = document.getElementById("inline-messages");
-  const inlineInput = document.getElementById("inline-input");
-  const inlineSend = document.getElementById("inline-send");
-
-  const popupWrap = document.getElementById("popup-wrap");
-  const popupOverlay = document.getElementById("popup-overlay");
-  const popupMessages = document.getElementById("popup-messages");
-  const popupInput = document.getElementById("popup-input");
-  const popupSend = document.getElementById("popup-send");
-  const popupClose = document.getElementById("popup-close");
-
-  const bubbleBtn = document.getElementById("bubble-btn");
-  const qrImg = document.getElementById("apt-qr-img");
-  const qrLink = document.getElementById("apt-qr");
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  function linkifyHtml(text){
-    const safe = escapeHtml(text);
-    const re = /((https?:\/\/|www\.)[^\s<>"']+)/gi;
-    return safe.replace(re, (m)=>{
-      const href = m.startsWith("www.") ? ("https://" + m) : m;
-      return '<a href="'+escapeHtml(href)+'" target="_blank" rel="noopener">'+escapeHtml(m)+'</a>';
-    });
-  }
-
-  function addMsg(container, text, who){
-    if(!container) return;
-    const div = document.createElement("div");
-    div.className = "msg " + (who === "user" ? "user" : "bot");
-    div.innerHTML = linkifyHtml(text || "");
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-  }
-
-  async function ask(container, inputEl, sendBtn){
-    const text = (inputEl.value || "").trim();
-    if(!text) return;
-
-    addMsg(container, text, "user");
-    inputEl.value = "";
-    sendBtn.disabled = true;
-
-    try{
-      const res = await fetch(CHAT_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json, text/plain;q=0.9,*/*;q=0.8"
-        },
-        body: JSON.stringify({
-          message: text,
-          url: window.location.href,
-          meta: { source: "endora-landing" }
-        })
-      });
-
-      const ct = (res.headers.get("content-type") || "").toLowerCase();
-      let data = null;
-      let raw = "";
-
-      if(ct.includes("application/json")){
-        try{ data = await res.json(); }catch(_){ data = null; }
-      } else {
-        try{ raw = await res.text(); }catch(_){ raw = ""; }
-        try{ data = JSON.parse(raw); }catch(_){ /* ignore */ }
-      }
-
-      const reply =
-        (data && (data.reply || data.output || data.answer || data.message || data.text)) ||
-        (raw && raw.trim()) ||
-        "Keine Antwort erhalten.";
-
-      addMsg(container, String(reply).trim(), "bot");
-    } catch(e){
-      addMsg(container, "Verbindungsproblem — bitte gleich nochmal versuchen.", "bot");
-    } finally{
-      sendBtn.disabled = false;
-    }
-  }
-
-  function wireChat(container, inputEl, sendBtn){
-    if(!container || !inputEl || !sendBtn) return;
-
-    // Welcome (nur wenn leer)
-    if(container.children.length === 0){
-      addMsg(container, "Willkommen! 👋 Ich bin Endora – dein digitaler Concierge. Frag mich alles rund um deinen Aufenthalt.", "bot");
-    }
-
-    sendBtn.addEventListener("click", ()=>ask(container, inputEl, sendBtn));
-    inputEl.addEventListener("keydown", (e)=>{
-      if(e.key === "Enter"){
-        e.preventDefault();
-        ask(container, inputEl, sendBtn);
-      }
-    });
-  }
-
-  function openPopup(){
-    if(popupOverlay) popupOverlay.style.display = "block";
-    if(popupWrap) popupWrap.style.display = "block";
-    setTimeout(()=>{ try{ popupInput && popupInput.focus(); }catch(_){} }, 50);
-  }
-  function closePopup(){
-    if(popupOverlay) popupOverlay.style.display = "none";
-    if(popupWrap) popupWrap.style.display = "none";
-  }
-
-  // Wire both chats
-  wireChat(inlineMessages, inlineInput, inlineSend);
-  wireChat(popupMessages, popupInput, popupSend);
-
-  // Bubble opens popup
-  if(bubbleBtn) bubbleBtn.addEventListener("click", openPopup);
-  if(popupClose) popupClose.addEventListener("click", closePopup);
-  if(popupOverlay) popupOverlay.addEventListener("click", closePopup);
-
-  // QR: make sure it is visible + scannable (hi-res + margin)
-  if(qrImg){
-    const target = window.location.origin + window.location.pathname + "#openChat";
-    qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=16&data=" + encodeURIComponent(target);
-  }
-
-  // QR click: scroll to chat + focus
-  if(qrLink){
-    qrLink.addEventListener("click", function(){
-      const el = document.getElementById("openChat");
-      if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
-      setTimeout(()=>{ try{ inlineInput && inlineInput.focus(); }catch(_){} }, 250);
-    });
-  }
-
-  // If hash is already #openChat on load
-  if(window.location.hash === "#openChat"){
-    const el = document.getElementById("openChat");
-    if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
-    setTimeout(()=>{ try{ inlineInput && inlineInput.focus(); }catch(_){} }, 250);
-  }
-})();
+    var target = location.origin + location.pathname + '#openChat';
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=16&data=' + encodeURIComponent(target);
+  })();
 </script>
 
 </body>
