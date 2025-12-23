@@ -1,4 +1,4 @@
-// Endora Chat Core Loader v1.4
+// Endora Chat Core Loader v1.5
 // Lädt das Chat-Widget, bindet UI-Events und schickt Messages an Cloudflare → n8n.
 
 (function () {
@@ -160,7 +160,8 @@
 
     if (txt) return txt;
 
-    return "Okay, got it.";
+    // ✅ FIX: niemals mehr "Okay, got it."
+    return "Sorry — I didn’t receive a usable response. Please try again in a moment.";
   }
 
   // --------------------------------------------------
@@ -238,6 +239,21 @@
       }
 
       stopTyping();
+
+      // ✅ Voucher/QR support (minimal): print QR URL + expiry if present
+      const qrUrl =
+        (data && data.payload && data.payload.qr_url) ||
+        (data && data.qr_url);
+
+      if (qrUrl) {
+        const exp =
+          (data && data.payload && data.payload.expires_at) ||
+          (data && data.expires_at);
+
+        const line = "🎟️ Voucher ready: " + qrUrl + (exp ? " (valid until: " + exp + ")" : "");
+        appendMessage(msgContainer, line, "bot");
+        return;
+      }
 
       const reply = extractReply(data, rawText);
       appendMessage(msgContainer, reply, "bot");
