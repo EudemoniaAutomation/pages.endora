@@ -36,6 +36,34 @@
     .msg.bot ul{margin:.25rem 0 .5rem 1.25rem;padding:0}
     .msg.bot li{margin:.15rem 0}
 
+    .brand-link{
+      color:inherit;
+      text-decoration:none;
+      font:inherit;
+    }
+    .brand-link:visited,
+    .brand-link:hover,
+    .brand-link:active,
+    .brand-link:focus{
+      color:inherit;
+      text-decoration:none;
+    }
+
+    .voucher-link{
+      color:var(--acc);
+      text-decoration:none;
+      font-weight:700;
+      border-bottom:1px solid rgba(234,246,241,.35);
+      transition:.2s;
+      word-break:break-word;
+    }
+    .voucher-link:hover,
+    .voucher-link:focus{
+      color:#fff;
+      border-bottom-color:rgba(255,255,255,.6);
+      text-decoration:none;
+    }
+
     /* Typing indicator – kompatibel mit Coreloader */
     .msg.bot.typing{display:flex;gap:6px;align-items:center}
     .typing{display:flex;gap:6px;align-items:center}
@@ -106,7 +134,7 @@
 
     <div class="chat-window" id="inline-chat">
       <div class="chat-header">
-        <span>💬 Endora</span>
+        <span>💬 <a href="https://www.endora.io" target="_blank" rel="noopener noreferrer" class="brand-link">Endora.io</a></span>
         <button class="chat-close" id="inline-close" title="Minimize">×</button>
       </div>
       <div class="chat-messages" id="inline-messages"></div>
@@ -132,7 +160,7 @@
   <div class="popup-wrap" id="popup-wrap">
     <div class="chat-window" id="popup-chat">
       <div class="chat-header">
-        <span>💬 Endora</span>
+        <span>💬 <a href="https://www.endora.io" target="_blank" rel="noopener noreferrer" class="brand-link">Endora.io</a></span>
         <button class="chat-close" id="popup-close" title="Close">×</button>
       </div>
       <div class="chat-messages" id="popup-messages"></div>
@@ -143,10 +171,8 @@
     </div>
   </div>
 
-  <!-- Page-only: Welcome message + QR target + auto-open from URL (NO sending logic here) -->
   <script>
     (function () {
-      // 1) Welcome message (per page customizable)
       const WELCOME = "Welcome! 👋 I'm here to help with check-in, house rules, and local recommendations. Just ask away!";
 
       function injectWelcome(id) {
@@ -162,7 +188,6 @@
       injectWelcome("inline-messages");
       injectWelcome("popup-messages");
 
-      // 2) QR code always links to this page + openChat flag
       const QR_IMG = document.getElementById("apt-qr-img");
       const QR_LINK = document.getElementById("apt-qr");
 
@@ -195,7 +220,6 @@
         QR_IMG.src = src1;
       }
 
-      // 3) Auto-open chat when scanned (works with coreloader bubble handler)
       function tryOpenFromUrl() {
         const s = new URLSearchParams(window.location.search);
         if (window.location.hash === "#openChat" || s.get("openChat") === "1") {
@@ -205,10 +229,85 @@
       }
       window.addEventListener("hashchange", tryOpenFromUrl);
       tryOpenFromUrl();
+
+      function replaceVoucherLinksInElement(el) {
+        if (!el) return;
+
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        let node;
+
+        while ((node = walker.nextNode())) {
+          if (!node.parentElement) continue;
+          if (node.parentElement.closest("a")) continue;
+          if (!node.nodeValue || !/https?:\/\/\S+/i.test(node.nodeValue)) continue;
+          textNodes.push(node);
+        }
+
+        textNodes.forEach((textNode) => {
+          const text = textNode.nodeValue;
+          const urlRegex = /https?:\/\/[^\s<]+/gi;
+          let lastIndex = 0;
+          let match;
+          const frag = document.createDocumentFragment();
+
+          while ((match = urlRegex.exec(text)) !== null) {
+            const url = match[0];
+            const start = match.index;
+
+            if (start > lastIndex) {
+              frag.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+            }
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            a.className = "voucher-link";
+            a.textContent = "Voucher-LINK";
+            frag.appendChild(a);
+
+            lastIndex = start + url.length;
+          }
+
+          if (lastIndex < text.length) {
+            frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+          }
+
+          textNode.parentNode.replaceChild(frag, textNode);
+        });
+
+        el.querySelectorAll(".msg.bot a").forEach((a) => {
+          if (!a.classList.contains("voucher-link")) {
+            a.classList.add("voucher-link");
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            a.textContent = "Voucher-LINK";
+          }
+        });
+      }
+
+      function observeMessages(containerId) {
+        const box = document.getElementById(containerId);
+        if (!box) return;
+
+        replaceVoucherLinksInElement(box);
+
+        const observer = new MutationObserver(() => {
+          replaceVoucherLinksInElement(box);
+        });
+
+        observer.observe(box, {
+          childList: true,
+          subtree: true
+        });
+      }
+
+      observeMessages("inline-messages");
+      observeMessages("popup-messages");
     })();
   </script>
 
-  <!-- TECH: Coreloader (Pflicht) – Cloudflare → n8n, Body Standard = message -->
   <script
     src="https://pages.endora.io/chat-interface-tech-config/v1/coreloader.js"
     data-webhook="https://pages.endora.io/api/chat"
